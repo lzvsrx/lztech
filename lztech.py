@@ -1,68 +1,84 @@
-
 import streamlit as st
 import datetime
 import json
 import os
 import pandas as pd
 import hashlib
-import matplotlib.pyplot as plt
 
 # Função para criptografar senha
 def hash_password(password):
+    """Criptografa a senha usando SHA256."""
     return hashlib.sha256(password.encode()).hexdigest()
 
-# Caminho base dos dados
+# Caminho base dos dados do usuário
+# Em um ambiente de produção (como o Streamlit Community Cloud),
+# este diretório pode precisar de permissões de escrita ou ser substituído
+# por um banco de dados persistente (ex: Firestore, PostgreSQL).
 DATA_DIR = "dados_usuarios"
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# Mensagem de boas-vindas
+# Configuração da página e mensagem de boas-vindas
 st.set_page_config(page_title="LZTech Chatbot", layout="centered")
 st.markdown(f"# 🤖 Bem-vindo ao LZTech\n📅 Data: {datetime.datetime.now().strftime('%d/%m/%Y')}")
 
-# Autenticação
+# Seção de Autenticação na barra lateral
 st.sidebar.header("🔐 Login ou Cadastro")
 username = st.sidebar.text_input("Usuário")
 password = st.sidebar.text_input("Senha", type="password")
 action = st.sidebar.radio("Ação", ["Login", "Cadastrar"])
 
+# Define o caminho do arquivo JSON para o usuário atual
 user_file = os.path.join(DATA_DIR, f"{username}.json")
 
-# Função para carregar dados
+# Função para carregar dados do usuário
 def carregar_dados():
+    """Carrega os dados do usuário de um arquivo JSON.
+    Retorna um dicionário padrão se o arquivo não existir."""
     if os.path.exists(user_file):
-        with open(user_file, "r") as f:
-            return json.load(f)
+        try:
+            with open(user_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            st.error(f"Erro ao ler o arquivo de dados para {username}. Criando um novo.")
+            return {"senha": "", "valores": []}
     else:
         return {"senha": "", "valores": []}
 
-# Função para salvar dados
+# Função para salvar dados do usuário
 def salvar_dados(dados):
-    with open(user_file, "w") as f:
-        json.dump(dados, f)
+    """Salva os dados do usuário em um arquivo JSON."""
+    try:
+        with open(user_file, "w", encoding="utf-8") as f:
+            json.dump(dados, f, indent=4) # Adiciona indentação para melhor legibilidade
+    except IOError as e:
+        st.error(f"Erro ao salvar dados para {username}: {e}")
 
-# Login ou cadastro
+# Lógica de Login ou Cadastro
 if username and password:
     dados = carregar_dados()
     senha_hash = hash_password(password)
 
     if action == "Cadastrar":
-        if os.path.exists(user_file):
+        if os.path.exists(user_file) and dados["senha"] != "":
+            # Verifica se o arquivo existe e se já tem uma senha definida (indicando usuário existente)
             st.sidebar.warning("Usuário já existe.")
         else:
-            salvar_dados({"senha": senha_hash, "valores": []})
+            dados["senha"] = senha_hash
+            salvar_dados(dados)
             st.sidebar.success("Cadastro realizado com sucesso!")
+            st.info("Por favor, faça login com seu novo usuário e senha.")
     elif action == "Login":
-        if dados["senha"] == senha_hash:
+        if dados["senha"] == senha_hash and dados["senha"] != "":
             st.success(f"Bem-vindo, {username}!")
 
-            # Ações disponíveis
+            # Ações disponíveis após o login
             st.markdown("### Ações disponíveis:")
             st.markdown("- ➕ **Adicionar valor**\n- 📊 **Ver todos os dados**\n- ➗ **Ver a soma total**\n- 📈 **Gráfico de valores**\n- 🧹 **Limpar dados**\n- 📥 **Exportar CSV**")
 
             acao = st.selectbox("Escolha uma ação:", ["Adicionar valor", "Ver todos os dados", "Ver a soma total", "Gráfico de valores", "Limpar dados", "Exportar CSV"])
 
             if acao == "Adicionar valor":
-                valor = st.number_input("Digite um valor numérico para adicionar:", step=1.0)
+                valor = st.number_input("Digite um valor numérico para adicionar:", step=1.0, format="%.2f")
                 if st.button("Adicionar"):
                     dados["valores"].append(valor)
                     salvar_dados(dados)
@@ -70,19 +86,34 @@ if username and password:
 
             elif acao == "Ver todos os dados":
                 st.write("### 📋 Valores armazenados:")
-                st.write(dados["valores"] if dados["valores"] else "Nenhum valor armazenado ainda.")
+                if dados["valores"]:
+                    df_valores = pd.DataFrame(dados["valores"], columns=["Valores"])
+                    st.dataframe(df_valores)
+                else:
+                    st.info("Nenhum valor armazenado ainda.")
 
             elif acao == "Ver a soma total":
-                total = sum(dados["valores"])
+                total = sum(dados["valores"]) if dados["valores"] else 0
                 st.metric("🔢 Soma total dos dados:", total)
 
             elif acao == "Gráfico de valores":
                 if dados["valores"]:
-                    st.line_chart(pd.DataFrame(dados["valores"], columns=["Valores"]))
+                    # Cria um DataFrame para o gráfico
+                    df_grafico = pd.DataFrame(dados["valores"], columns=["Valores"])
+                    st.line_chart(df_grafico)
+                    st.markdown("---")
+                    st.write("### Distribuição dos Valores")
+                    fig, ax = plt.subplots()
+                    ax.hist(dados["valores"], bins=5, edgecolor='black')
+                    ax.set_title('Distribuição dos Valores')
+                    ax.set_xlabel('Valor')
+                    ax.set_ylabel('Frequência')
+                    st.pyplot(fig)
                 else:
                     st.info("Nenhum dado para exibir o gráfico.")
 
             elif acao == "Limpar dados":
+                st.warning("Esta ação removerá todos os seus dados. Tem certeza?")
                 if st.button("Confirmar limpeza dos dados"):
                     dados["valores"] = []
                     salvar_dados(dados)
@@ -96,4 +127,9 @@ if username and password:
                 else:
                     st.info("Nenhum dado para exportar.")
         else:
-            st.sidebar.error("Usuário ou senha incorretos.")
+            st.sidebar.error("Usuário ou senha incorretos, ou usuário não cadastrado.")
+elif username or password: # Se um dos campos estiver preenchido, mas não ambos
+    st.sidebar.info("Por favor, preencha ambos os campos de usuário e senha.")
+else: # Se nenhum campo estiver preenchido
+    st.sidebar.info("Digite seu usuário e senha para fazer login ou cadastrar-se.")
+

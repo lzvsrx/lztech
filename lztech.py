@@ -79,26 +79,26 @@ st.markdown(
     <style>
     .stApp {
         background-color: #1a202c; /* Azul escuro */
-        color: white; /* Define a cor do texto para branco */
+        color: black; /* Define a cor do texto para branco */
     }
     /* Garante que os cabeçalhos também sejam brancos */
     h1, h2, h3, h4, h5, h6 {
-        color: white;
+        color: black;
     }
     /* Garante que o texto de entrada também seja branco */
     .stTextInput label, .stNumberInput label, .stDateInput label, .stRadio label, .stSelectbox label {
-        color: white !important;
+        color: black !important;
     }
     .stTextInput input, .stNumberInput input, .stDateInput input, .stSelectbox div[data-baseweb="select"] div[role="button"] {
-        color: white;
+        color: black;
     }
     /* Altera a cor do texto dentro do campo de data */
     .stDateInput input[type="text"] {
-        color: white;
+        color: black;
     }
     /* Altera a cor do texto dentro do selectbox */
     .stSelectbox div[data-baseweb="select"] div[role="button"] span {
-        color: white;
+        color: black;
     }
     /* Altera a cor do texto da tabela */
     .stDataFrame {

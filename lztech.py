@@ -24,7 +24,7 @@ def carregar_dados(username):
     Carrega os dados de um usuário de um arquivo JSON.
     Inicializa um dicionário padrão se o arquivo não existir ou estiver corrompido.
     Realiza a migração de formatos de dados antigos (apenas números) para o novo formato
-    (dicionários com valor, tipo_atividade e data).
+    (dicionários com valor, tipo_atividade, data e titulo).
     """
     user_file = os.path.join(DATA_DIR, f"{username}.json")
     if os.path.exists(user_file):
@@ -37,16 +37,21 @@ def carregar_dados(username):
                 novos_valores = []
                 for item in dados["valores"]:
                     if isinstance(item, (int, float)):
+                        # Migra formato antigo (apenas número) para o novo formato
                         novos_valores.append({
                             "valor": item,
                             "tipo_atividade": "Não especificado",
-                            "data": "Desconhecida"
+                            "data": "Desconhecida",
+                            "titulo": "Sem Título" # Adiciona o campo 'titulo'
                         })
                     elif isinstance(item, dict):
+                        # Garante que todos os campos necessários estão presentes no dicionário
+                        # e adiciona padrões se estiverem faltando
                         novos_valores.append({
                             "valor": item.get("valor", 0.0),
                             "tipo_atividade": item.get("tipo_atividade", "Não especificado"),
-                            "data": item.get("data", "Desconhecida")
+                            "data": item.get("data", "Desconhecida"),
+                            "titulo": item.get("titulo", "Sem Título") # Adiciona o campo 'titulo'
                         })
                     else:
                         st.warning(f"Tipo de dado inesperado encontrado para '{username}': {type(item)}. Ignorando entrada.")
@@ -151,20 +156,22 @@ else: # Conteúdo principal após o login
         st.markdown("---")
         st.write("### Adicionar Novo Valor")
         with st.form("adicionar_valor_form"):
+            titulo = st.text_input("Título do Dado (ex: Conta de Luz, Salário Maio):") # Novo campo para o título
             valor = st.number_input("Digite um valor numérico:", step=0.01, format="%.2f")
-            tipo_atividade = st.text_input("Tipo de atividade (ex: Compras, Salário, Lazer):")
+            tipo_atividade = st.text_input("Tipo de atividade (ex: Despesa, Receita, Lazer):")
             data_atividade = st.date_input("Data da atividade:", datetime.date.today())
 
             submitted = st.form_submit_button("Adicionar Valor")
             if submitted:
                 if valor is not None:
                     current_user_data["valores"].append({
+                        "titulo": titulo if titulo else "Sem Título", # Salva o título
                         "valor": valor,
                         "tipo_atividade": tipo_atividade if tipo_atividade else "Não especificado",
                         "data": data_atividade.strftime("%Y-%m-%d")
                     })
                     salvar_dados(st.session_state.current_username, current_user_data)
-                    st.success(f"Valor **{valor:.2f}** (Tipo: **{tipo_atividade if tipo_atividade else 'Não especificado'}**) em **{data_atividade.strftime('%d/%m/%Y')}** adicionado com sucesso!")
+                    st.success(f"Dado '{titulo if titulo else 'Sem Título'}' com valor **{valor:.2f}** (Tipo: **{tipo_atividade if tipo_atividade else 'Não especificado'}**) em **{data_atividade.strftime('%d/%m/%Y')}** adicionado com sucesso!")
                 else:
                     st.error("Por favor, digite um valor numérico.")
 
@@ -173,7 +180,8 @@ else: # Conteúdo principal após o login
         st.write("### 📋 Valores Armazenados:")
         if current_user_data["valores"]:
             df_valores = pd.DataFrame(current_user_data["valores"])
-            df_valores = df_valores[["data", "tipo_atividade", "valor"]]
+            # Reorganiza as colunas para melhor visualização, incluindo o 'titulo'
+            df_valores = df_valores[["data", "titulo", "tipo_atividade", "valor"]]
             st.dataframe(df_valores, use_container_width=True)
         else:
             st.info("Nenhum valor armazenado ainda. Adicione alguns valores!")
@@ -182,6 +190,7 @@ else: # Conteúdo principal após o login
         st.markdown("---")
         total = sum([item["valor"] for item in current_user_data["valores"]]) if current_user_data["valores"] else 0
         st.metric("🔢 Soma total dos dados:", f"R$ {total:.2f}")
+        st.info("Esta soma inclui todos os valores registrados, independentemente do título ou tipo de atividade.")
 
     elif acao == "Gráfico de valores":
         st.markdown("---")
@@ -204,6 +213,7 @@ else: # Conteúdo principal após o login
                 st.info("Nenhum dado numérico para exibir o gráfico.")
         else:
             st.info("Nenhum dado para exibir o gráfico. Adicione alguns valores primeiro!")
+        st.info("Os gráficos mostram a distribuição e tendência dos valores numéricos. O título e tipo de atividade não são exibidos diretamente nos gráficos.")
 
     elif acao == "Limpar dados":
         st.markdown("---")
@@ -217,7 +227,8 @@ else: # Conteúdo principal após o login
         st.markdown("---")
         if current_user_data["valores"]:
             df_export = pd.DataFrame(current_user_data["valores"])
-            df_export = df_export[["data", "tipo_atividade", "valor"]]
+            # Garante a ordem das colunas para o CSV, incluindo o 'titulo'
+            df_export = df_export[["data", "titulo", "tipo_atividade", "valor"]]
             csv = df_export.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="📥 Baixar Dados como CSV",

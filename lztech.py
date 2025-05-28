@@ -73,23 +73,41 @@ def salvar_dados(username, dados):
 
 st.set_page_config(page_title="LZTech Chatbot", layout="centered")
 
-# Injetar CSS para mudar a cor de fundo para azul escuro e a cor do texto para preto
+# Injetar CSS para mudar a cor de fundo para azul escuro e a cor do texto para branco
 st.markdown(
     """
     <style>
     .stApp {
         background-color: #1a202c; /* Azul escuro */
-        color: black; /* Define a cor do texto para preto */
+        color: white; /* Define a cor do texto para branco */
     }
-    /* Garante que os cabeçalhos também sejam pretos */
+    /* Garante que os cabeçalhos também sejam brancos */
     h1, h2, h3, h4, h5, h6 {
+        color: white;
+    }
+    /* Garante que o texto de entrada também seja branco */
+    .stTextInput label, .stNumberInput label, .stDateInput label, .stRadio label, .stSelectbox label {
+        color: white !important;
+    }
+    .stTextInput input, .stNumberInput input, .stDateInput input, .stSelectbox div[data-baseweb="select"] div[role="button"] {
+        color: white;
+    }
+    /* Altera a cor do texto dentro do campo de data */
+    .stDateInput input[type="text"] {
+        color: white;
+    }
+    /* Altera a cor do texto dentro do selectbox */
+    .stSelectbox div[data-baseweb="select"] div[role="button"] span {
+        color: white;
+    }
+    /* Altera a cor do texto da tabela */
+    .stDataFrame {
+        color: black; /* Mantém o texto da tabela preto para melhor legibilidade */
+    }
+    .stDataFrame thead th {
         color: black;
     }
-    /* Garante que o texto de entrada também seja preto */
-    .stTextInput label, .stNumberInput label, .stDateInput label, .stRadio label, .stSelectbox label {
-        color: black !important;
-    }
-    .stTextInput input, .stNumberInput input {
+    .stDataFrame tbody tr td {
         color: black;
     }
     </style>

@@ -4,6 +4,7 @@ import json
 import os
 import pandas as pd
 import hashlib
+import matplotlib.pyplot as plt # Importar matplotlib para o gráfico de histograma
 
 # Função para criptografar senha
 def hash_password(password):
@@ -32,12 +33,43 @@ user_file = os.path.join(DATA_DIR, f"{username}.json")
 
 # Função para carregar dados do usuário
 def carregar_dados():
-    """Carrega os dados do usuário de um arquivo JSON.
-    Retorna um dicionário padrão se o arquivo não existir."""
+    """
+    Carrega os dados do usuário de um arquivo JSON.
+    Retorna um dicionário padrão se o arquivo não existir.
+    Converte entradas antigas (apenas números) para o novo formato de dicionário.
+    """
     if os.path.exists(user_file):
         try:
             with open(user_file, "r", encoding="utf-8") as f:
-                return json.load(f)
+                dados = json.load(f)
+                # Verifica se a chave 'valores' existe e se é uma lista
+                if "valores" in dados and isinstance(dados["valores"], list):
+                    # Converte entradas antigas (apenas números) para o novo formato
+                    novos_valores = []
+                    for item in dados["valores"]:
+                        if isinstance(item, (int, float)):
+                            # Se for um número, converte para o novo formato com valores padrão
+                            novos_valores.append({
+                                "valor": item,
+                                "tipo_atividade": "Não especificado",
+                                "data": "Data desconhecida"
+                            })
+                        elif isinstance(item, dict):
+                            # Se já for um dicionário, garante que todas as chaves existem
+                            # e adiciona padrões se estiverem faltando
+                            novos_valores.append({
+                                "valor": item.get("valor", 0.0),
+                                "tipo_atividade": item.get("tipo_atividade", "Não especificado"),
+                                "data": item.get("data", "Data desconhecida")
+                            })
+                        else:
+                            # Lida com tipos inesperados, talvez ignorando ou registrando um erro
+                            st.warning(f"Tipo de dado inesperado encontrado: {type(item)}. Ignorando.")
+                    dados["valores"] = novos_valores
+                else:
+                    # Se 'valores' não existir ou não for uma lista, inicializa
+                    dados["valores"] = []
+                return dados
         except json.JSONDecodeError:
             st.error(f"Erro ao ler o arquivo de dados para {username}. Criando um novo.")
             return {"senha": "", "valores": []}
@@ -79,32 +111,43 @@ if username and password:
 
             if acao == "Adicionar valor":
                 valor = st.number_input("Digite um valor numérico para adicionar:", step=1.0, format="%.2f")
+                tipo_atividade = st.text_input("Tipo de atividade (ex: Compras, Salário, Lazer):")
+                data_atividade = st.date_input("Data da atividade:", datetime.date.today())
+
                 if st.button("Adicionar"):
-                    dados["valores"].append(valor)
+                    # Adiciona um dicionário com valor, tipo de atividade e data
+                    dados["valores"].append({
+                        "valor": valor,
+                        "tipo_atividade": tipo_atividade,
+                        "data": data_atividade.strftime("%Y-%m-%d") # Formata a data para string
+                    })
                     salvar_dados(dados)
-                    st.success(f"Valor {valor} adicionado com sucesso!")
+                    st.success(f"Valor {valor} de '{tipo_atividade}' em {data_atividade.strftime('%d/%m/%Y')} adicionado com sucesso!")
 
             elif acao == "Ver todos os dados":
                 st.write("### 📋 Valores armazenados:")
                 if dados["valores"]:
-                    df_valores = pd.DataFrame(dados["valores"], columns=["Valores"])
+                    # Cria um DataFrame a partir da lista de dicionários
+                    df_valores = pd.DataFrame(dados["valores"])
                     st.dataframe(df_valores)
                 else:
                     st.info("Nenhum valor armazenado ainda.")
 
             elif acao == "Ver a soma total":
-                total = sum(dados["valores"]) if dados["valores"] else 0
+                # Calcula a soma apenas dos valores numéricos
+                total = sum([item["valor"] for item in dados["valores"]]) if dados["valores"] else 0
                 st.metric("🔢 Soma total dos dados:", total)
 
             elif acao == "Gráfico de valores":
                 if dados["valores"]:
-                    # Cria um DataFrame para o gráfico
-                    df_grafico = pd.DataFrame(dados["valores"], columns=["Valores"])
+                    # Extrai apenas os valores numéricos para o gráfico de linha
+                    valores_numericos = [item["valor"] for item in dados["valores"]]
+                    df_grafico = pd.DataFrame(valores_numericos, columns=["Valores"])
                     st.line_chart(df_grafico)
                     st.markdown("---")
                     st.write("### Distribuição dos Valores")
                     fig, ax = plt.subplots()
-                    ax.hist(dados["valores"], bins=5, edgecolor='black')
+                    ax.hist(valores_numericos, bins=5, edgecolor='black') # Usa os valores numéricos
                     ax.set_title('Distribuição dos Valores')
                     ax.set_xlabel('Valor')
                     ax.set_ylabel('Frequência')
@@ -121,7 +164,8 @@ if username and password:
 
             elif acao == "Exportar CSV":
                 if dados["valores"]:
-                    df = pd.DataFrame(dados["valores"], columns=["Valores"])
+                    # Cria um DataFrame a partir da lista de dicionários para exportação
+                    df = pd.DataFrame(dados["valores"])
                     csv = df.to_csv(index=False).encode('utf-8')
                     st.download_button("📥 Baixar CSV", csv, f"{username}_valores.csv", "text/csv")
                 else:
@@ -132,4 +176,3 @@ elif username or password: # Se um dos campos estiver preenchido, mas não ambos
     st.sidebar.info("Por favor, preencha ambos os campos de usuário e senha.")
 else: # Se nenhum campo estiver preenchido
     st.sidebar.info("Digite seu usuário e senha para fazer login ou cadastrar-se.")
-

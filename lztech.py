@@ -102,13 +102,13 @@ st.markdown(
     }
     /* Altera a cor do texto da tabela */
     .stDataFrame {
-        color: white; /* Mantém o texto da tabela preto para melhor legibilidade */
+        color: black; /* Mantém o texto da tabela preto para melhor legibilidade */
     }
     .stDataFrame thead th {
         color: white;
     }
     .stDataFrame tbody tr td {
-        color: white;
+        color: black;
     }
     </style>
     """,

@@ -73,12 +73,12 @@ def salvar_dados(username, dados):
 
 st.set_page_config(page_title="LZTech Chatbot", layout="centered")
 
-# Injetar CSS para mudar a cor de fundo para cinza claro e a cor do texto para preto
+# Injetar CSS para mudar a cor de fundo para azul escuro e a cor do texto para preto
 st.markdown(
     """
     <style>
     .stApp {
-        background-color: #f0f2f6; /* Cinza claro */
+        background-color: #1a202c; /* Azul escuro */
         color: black; /* Define a cor do texto para preto */
     }
     /* Garante que os cabeçalhos também sejam pretos */

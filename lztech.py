@@ -136,7 +136,7 @@ if not st.session_state.logged_in:
 
     with col2:
         if not st.session_state.show_forgot_password_form:
-            st.header("🔐 Login ou Cadastro")
+            st.header("🔐 Login/Cadastro")
             username_input = st.text_input("Usuário", key="username_auth_main")
             password_input = st.text_input("Senha", type="password", key="password_auth_main")
             action_auth = st.radio("Ação", ["Login", "Cadastrar"], key="action_auth_main")

@@ -78,7 +78,7 @@ st.markdown(
     """
     <style>
     .stApp {
-        background-color: #00008b; /* Azul escuro */
+        background-color: #818181;
         color: black; /* Define a cor do texto para preto */
     }
     /* Garante que os cabeçalhos também sejam pretos */

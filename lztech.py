@@ -37,21 +37,18 @@ def carregar_dados(username):
                 novos_valores = []
                 for item in dados["valores"]:
                     if isinstance(item, (int, float)):
-                        # Migra formato antigo (apenas número) para o novo formato
                         novos_valores.append({
                             "valor": item,
                             "tipo_atividade": "Não especificado",
                             "data": "Desconhecida",
-                            "titulo": "Sem Título" # Adiciona o campo 'titulo'
+                            "titulo": "Sem Título"
                         })
                     elif isinstance(item, dict):
-                        # Garante que todos os campos necessários estão presentes no dicionário
-                        # e adiciona padrões se estiverem faltando
                         novos_valores.append({
                             "valor": item.get("valor", 0.0),
                             "tipo_atividade": item.get("tipo_atividade", "Não especificado"),
                             "data": item.get("data", "Desconhecida"),
-                            "titulo": item.get("titulo", "Sem Título") # Adiciona o campo 'titulo'
+                            "titulo": item.get("titulo", "Sem Título")
                         })
                     else:
                         st.warning(f"Tipo de dado inesperado encontrado para '{username}': {type(item)}. Ignorando entrada.")
@@ -76,12 +73,24 @@ def salvar_dados(username, dados):
 
 st.set_page_config(page_title="LZTech Chatbot", layout="centered")
 
-# Injetar CSS para mudar a cor de fundo para cinza claro
+# Injetar CSS para mudar a cor de fundo para cinza claro e a cor do texto para preto
 st.markdown(
     """
     <style>
     .stApp {
         background-color: #f0f2f6; /* Cinza claro */
+        color: black; /* Define a cor do texto para preto */
+    }
+    /* Garante que os cabeçalhos também sejam pretos */
+    h1, h2, h3, h4, h5, h6 {
+        color: black;
+    }
+    /* Garante que o texto de entrada também seja preto */
+    .stTextInput label, .stNumberInput label, .stDateInput label, .stRadio label, .stSelectbox label {
+        color: black !important;
+    }
+    .stTextInput input, .stNumberInput input {
+        color: black;
     }
     </style>
     """,
@@ -100,12 +109,11 @@ if "current_username" not in st.session_state:
 
 # Se o usuário não estiver logado, mostra o formulário de login/cadastro centralizado
 if not st.session_state.logged_in:
-    st.markdown("---") # Separador visual
+    st.markdown("---")
 
-    # Usar colunas para centralizar o formulário de login
-    col1, col2, col3 = st.columns([1, 2, 1]) # Colunas vazias nas laterais, uma coluna maior no meio
+    col1, col2, col3 = st.columns([1, 2, 1])
 
-    with col2: # Todo o conteúdo do login/cadastro estará nesta coluna central
+    with col2:
         st.header("🔐 Login ou Cadastro")
         username_input = st.text_input("Usuário", key="username_auth_main")
         password_input = st.text_input("Senha", type="password", key="password_auth_main")
@@ -129,7 +137,7 @@ if not st.session_state.logged_in:
                     st.session_state.logged_in = True
                     st.session_state.current_username = username_input
                     st.success(f"Login bem-sucedido! Bem-vindo(a), {username_input}!")
-                    st.rerun() # Recarrega a página para mostrar o conteúdo pós-login
+                    st.rerun()
                 else:
                     st.error("Usuário ou senha incorretos, ou usuário não cadastrado.")
                     st.session_state.logged_in = False
@@ -144,7 +152,6 @@ else: # Conteúdo principal após o login
     st.markdown("### Ações disponíveis:")
     st.markdown("- ➕ **Adicionar valor**\n- 📊 **Ver todos os dados**\n- ➗ **Ver a soma total**\n- 📈 **Gráfico de valores**\n- 🧹 **Limpar dados**\n- 📥 **Exportar CSV**")
 
-    # Recarregar dados do usuário logado
     current_user_data = carregar_dados(st.session_state.current_username)
 
     acao = st.selectbox("Escolha uma ação:",
@@ -156,7 +163,7 @@ else: # Conteúdo principal após o login
         st.markdown("---")
         st.write("### Adicionar Novo Valor")
         with st.form("adicionar_valor_form"):
-            titulo = st.text_input("Título do Dado (ex: Conta de Luz, Salário Maio):") # Novo campo para o título
+            titulo = st.text_input("Título do Dado (ex: Conta de Luz, Salário Maio):")
             valor = st.number_input("Digite um valor numérico:", step=0.01, format="%.2f")
             tipo_atividade = st.text_input("Tipo de atividade (ex: Despesa, Receita, Lazer):")
             data_atividade = st.date_input("Data da atividade:", datetime.date.today())
@@ -165,7 +172,7 @@ else: # Conteúdo principal após o login
             if submitted:
                 if valor is not None:
                     current_user_data["valores"].append({
-                        "titulo": titulo if titulo else "Sem Título", # Salva o título
+                        "titulo": titulo if titulo else "Sem Título",
                         "valor": valor,
                         "tipo_atividade": tipo_atividade if tipo_atividade else "Não especificado",
                         "data": data_atividade.strftime("%Y-%m-%d")
@@ -180,7 +187,6 @@ else: # Conteúdo principal após o login
         st.write("### 📋 Valores Armazenados:")
         if current_user_data["valores"]:
             df_valores = pd.DataFrame(current_user_data["valores"])
-            # Reorganiza as colunas para melhor visualização, incluindo o 'titulo'
             df_valores = df_valores[["data", "titulo", "tipo_atividade", "valor"]]
             st.dataframe(df_valores, use_container_width=True)
         else:
@@ -227,7 +233,6 @@ else: # Conteúdo principal após o login
         st.markdown("---")
         if current_user_data["valores"]:
             df_export = pd.DataFrame(current_user_data["valores"])
-            # Garante a ordem das colunas para o CSV, incluindo o 'titulo'
             df_export = df_export[["data", "titulo", "tipo_atividade", "valor"]]
             csv = df_export.to_csv(index=False).encode('utf-8')
             st.download_button(
@@ -244,4 +249,4 @@ else: # Conteúdo principal após o login
     if st.button("Sair (Logout)", key="logout_button_main"):
         st.session_state.logged_in = False
         st.session_state.current_username = ""
-        st.rerun() # Recarrega a página para resetar o estado
+        st.rerun()

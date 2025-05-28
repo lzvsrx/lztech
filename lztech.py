@@ -124,6 +124,9 @@ if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 if "current_username" not in st.session_state:
     st.session_state.current_username = ""
+# Nova variável de estado para controlar a exibição do formulário "Esqueci a Senha"
+if "show_forgot_password_form" not in st.session_state:
+    st.session_state.show_forgot_password_form = False
 
 # Se o usuário não estiver logado, mostra o formulário de login/cadastro centralizado
 if not st.session_state.logged_in:
@@ -132,38 +135,72 @@ if not st.session_state.logged_in:
     col1, col2, col3 = st.columns([1, 2, 1])
 
     with col2:
-        st.header("🔐 Login ou Cadastro")
-        username_input = st.text_input("Usuário", key="username_auth_main")
-        password_input = st.text_input("Senha", type="password", key="password_auth_main")
-        action_auth = st.radio("Ação", ["Login", "Cadastrar"], key="action_auth_main")
+        if not st.session_state.show_forgot_password_form:
+            st.header("🔐 Login ou Cadastro")
+            username_input = st.text_input("Usuário", key="username_auth_main")
+            password_input = st.text_input("Senha", type="password", key="password_auth_main")
+            action_auth = st.radio("Ação", ["Login", "Cadastrar"], key="action_auth_main")
 
-        if username_input and password_input:
-            dados_usuario = carregar_dados(username_input)
-            senha_hash_input = hash_password(password_input)
+            if username_input and password_input:
+                dados_usuario = carregar_dados(username_input)
+                senha_hash_input = hash_password(password_input)
 
-            if action_auth == "Cadastrar":
-                if os.path.exists(os.path.join(DATA_DIR, f"{username_input}.json")) and dados_usuario["senha"] != "":
-                    st.warning("Usuário já existe. Por favor, escolha outro nome de usuário ou faça login.")
+                if action_auth == "Cadastrar":
+                    if os.path.exists(os.path.join(DATA_DIR, f"{username_input}.json")) and dados_usuario["senha"] != "":
+                        st.warning("Usuário já existe. Por favor, escolha outro nome de usuário ou faça login.")
+                    else:
+                        dados_usuario["senha"] = senha_hash_input
+                        salvar_dados(username_input, dados_usuario)
+                        st.success("Cadastro realizado com sucesso! Agora faça login.")
+                        st.session_state.logged_in = False
+                        st.session_state.current_username = ""
+                elif action_auth == "Login":
+                    if dados_usuario["senha"] == senha_hash_input and dados_usuario["senha"] != "":
+                        st.session_state.logged_in = True
+                        st.session_state.current_username = username_input
+                        st.success(f"Login bem-sucedido! Bem-vindo(a), {username_input}!")
+                        st.rerun()
+                    else:
+                        st.error("Usuário ou senha incorretos, ou usuário não cadastrado.")
+                        st.session_state.logged_in = False
+                        st.session_state.current_username = ""
+            elif username_input or password_input:
+                st.info("Por favor, preencha ambos os campos de usuário e senha.")
+            else:
+                st.info("Digite seu usuário e senha para fazer login ou cadastrar-se.")
+
+            st.markdown("---")
+            if st.button("Esqueci a Senha", key="forgot_password_button"):
+                st.session_state.show_forgot_password_form = True
+                st.rerun() # Recarrega para mostrar o formulário de redefinição
+
+        else: # Formulário "Esqueci a Senha"
+            st.header("🔑 Redefinir Senha")
+            forgot_username = st.text_input("Nome de Usuário para Redefinição:", key="forgot_username")
+            new_password = st.text_input("Nova Senha", type="password", key="new_password")
+            confirm_new_password = st.text_input("Confirme a Nova Senha", type="password", key="confirm_new_password")
+
+            if st.button("Redefinir Senha", key="reset_password_submit"):
+                if forgot_username:
+                    user_data_path = os.path.join(DATA_DIR, f"{forgot_username}.json")
+                    if os.path.exists(user_data_path):
+                        if new_password == confirm_new_password:
+                            dados_reset = carregar_dados(forgot_username)
+                            dados_reset["senha"] = hash_password(new_password)
+                            salvar_dados(forgot_username, dados_reset)
+                            st.success("Senha redefinida com sucesso! Agora você pode fazer login.")
+                            st.session_state.show_forgot_password_form = False # Volta para o formulário de login
+                            st.rerun()
+                        else:
+                            st.error("As senhas não coincidem. Por favor, tente novamente.")
+                    else:
+                        st.error("Usuário não encontrado. Por favor, verifique o nome de usuário.")
                 else:
-                    dados_usuario["senha"] = senha_hash_input
-                    salvar_dados(username_input, dados_usuario)
-                    st.success("Cadastro realizado com sucesso! Agora faça login.")
-                    st.session_state.logged_in = False
-                    st.session_state.current_username = ""
-            elif action_auth == "Login":
-                if dados_usuario["senha"] == senha_hash_input and dados_usuario["senha"] != "":
-                    st.session_state.logged_in = True
-                    st.session_state.current_username = username_input
-                    st.success(f"Login bem-sucedido! Bem-vindo(a), {username_input}!")
-                    st.rerun()
-                else:
-                    st.error("Usuário ou senha incorretos, ou usuário não cadastrado.")
-                    st.session_state.logged_in = False
-                    st.session_state.current_username = ""
-        elif username_input or password_input:
-            st.info("Por favor, preencha ambos os campos de usuário e senha.")
-        else:
-            st.info("Digite seu usuário e senha para fazer login ou cadastrar-se.")
+                    st.error("Por favor, insira o nome de usuário.")
+
+            if st.button("Voltar ao Login", key="back_to_login_button"):
+                st.session_state.show_forgot_password_form = False
+                st.rerun()
 
 else: # Conteúdo principal após o login
     st.markdown(f"## Olá, {st.session_state.current_username}!")
